@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hospital
+      POSTGRES_PASSWORD: hospital_dev_pw
+      POSTGRES_DB: hospital_requests
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:

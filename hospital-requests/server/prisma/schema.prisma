@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  REQUESTER
+  STAFF
+  ADMIN
+}
+
+enum Status {
+  NEW
+  IN_PROGRESS
+  WAITING
+  DONE
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Department {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  users     User[]
+  requests  Request[]
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  requests  Request[]
+  staff     User[]    @relation("StaffCategories")
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  role          Role           @default(REQUESTER)
+  active        Boolean        @default(true)
+  departmentId  Int?
+  department    Department?    @relation(fields: [departmentId], references: [id])
+  createdAt     DateTime       @default(now())
+  handledCategories Category[] @relation("StaffCategories")
+
+  requested     Request[]      @relation("Requester")
+  assigned      Request[]      @relation("Assignee")
+  comments      Comment[]
+  attachments   Attachment[]
+  activity      ActivityLog[]
+  notifications Notification[]
+}
+
+model Request {
+  id           Int            @id @default(autoincrement())
+  title        String
+  description  String
+  status       Status         @default(NEW)
+  priority     Priority       @default(NORMAL)
+  dueDate      DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  firstResponseAt DateTime?
+  closedAt     DateTime?
+
+  requesterId  Int
+  requester    User           @relation("Requester", fields: [requesterId], references: [id])
+  assigneeId   Int?
+  assignee     User?          @relation("Assignee", fields: [assigneeId], references: [id])
+  departmentId Int
+  department   Department     @relation(fields: [departmentId], references: [id])
+  categoryId   Int
+  category     Category       @relation(fields: [categoryId], references: [id])
+
+  comments     Comment[]
+  attachments  Attachment[]
+  activity     ActivityLog[]
+
+  @@index([status])
+  @@index([departmentId])
+  @@index([assigneeId])
+  @@index([createdAt])
+}
+
+model Comment {
+  id         Int      @id @default(autoincrement())
+  text       String
+  internal   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  requestId  Int
+  request    Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId   Int
+  author     User     @relation(fields: [authorId], references: [id])
+}
+
+model Attachment {
+  id          Int      @id @default(autoincrement())
+  filename    String
+  path        String
+  createdAt   DateTime @default(now())
+  requestId   Int
+  request     Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  uploaderId  Int
+  uploader    User     @relation(fields: [uploaderId], references: [id])
+}
+
+model ActivityLog {
+  id         Int      @id @default(autoincrement())
+  action     String
+  details    Json?
+  createdAt  DateTime @default(now())
+  requestId  Int?
+  request    Request? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+  message    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
